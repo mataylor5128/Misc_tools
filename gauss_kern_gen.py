@@ -13,10 +13,6 @@ tile = sys.argv[4]
 
 kernel = Gaussian2DKernel(fwhm_convert(float(fwhm)),x_size=int(dim),y_size=int(dim),mode='integrate')
 
-# for line in kernel.array:
-# 	print str(line)[1:-1].replace('\n','')
-# exit()
-
 kernel = np.sum(kernel.array)*kernel.array/np.max(kernel.array)
 
 #plt.figure()
@@ -24,10 +20,8 @@ kernel = np.sum(kernel.array)*kernel.array/np.max(kernel.array)
 #plt.colorbar()
 #plt.show()
 
-#print 'gauss_'+fwhm+'_'+dim+'x'+dim+'_t'+tile+'_'+filter+'.conv'
 fileout = open('gauss_'+fwhm+'_'+dim+'x'+dim+'_t'+tile+'_'+filter+'.conv','w')
 print >> fileout, 'CONV NORM'
 print >> fileout, '# '+dim+'x'+dim+' convolution mask of a gaussian PSF with FWHM = '+fwhm+' pixels.'
 for line in kernel:
-#	print str(line)[1:-1]
 	print >> fileout, str(line)[1:-1].replace('\n','')
