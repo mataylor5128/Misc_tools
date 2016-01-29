@@ -35,42 +35,64 @@ import numpy as np
 import matplotlib.pyplot as plt
 from subprocess import call
 import os
+import time
+
+start_time = time.time()
 
 do_filt = 'z'
 
-hdulist = fits.open('survey_tile1_%s_psf.ldac' % do_filt)
+filein = 'survey_tile1_%s_psf.ldac' % do_filt
+hdulist = fits.open(filein)
+
+fileout = filein.replace('.ldac','_dered.fits')
 
 do_filt = 'g'
 
 tbldata = hdulist[2].data
+orig_cols = tbldata.columns
+
+red_col = fits.ColDefs([
+	fits.Column(name='REDDENING', format='E',
+		array=np.zeros(len(tbldata)))
+		])
+
+hduout = fits.BinTableHDU.from_columns(orig_cols + red_col)
+redtbldata = hduout.data
 
 ra_vals = []
 dec_vals = []
 red_vals = []
-for ii in range(500):
+for ii in range(1000):
 	ind = np.random.random_integers(0,len(tbldata),1)
-	temp_ra = tbldata['ALPHA_J2000'][ind][0]
-	temp_dec = tbldata['DELTA_J2000'][ind][0]
+	temp_ra = tbldata['ALPHA_J2000'][[ii]][0]#[ind][0]
+	temp_dec = tbldata['DELTA_J2000'][[ii]][0]#[ind][0]
 	ra_vals.append(temp_ra)
 	dec_vals.append(temp_dec)
-	red_vals.append(get_red(temp_ra,temp_dec,do_filt))
+	temp_red = get_red(temp_ra,temp_dec,do_filt)
+	red_vals.append(temp_red)
+	redtbldata['REDDENING'][[ii]] = temp_red
 
-cm = plt.cm.get_cmap('jet')
+hduout.data = redtbldata
+hduout.writeto(fileout,clobber=True)
 
-fig = plt.figure()
-red_fig = plt.scatter(ra_vals,dec_vals,marker='o',edgecolor="None",
-	c=red_vals,
-	vmin=np.min(red_vals),
-	vmax=np.max(red_vals),
-	cmap=cm,s=5)
+print "Done in %.2f seconds" % (time.time()-start_time)
 
-plt.xlim(np.max(tbldata['ALPHA_J2000']),np.min(tbldata['ALPHA_J2000']))
-plt.ylim(np.min(tbldata['DELTA_J2000']),np.max(tbldata['DELTA_J2000']))
-plt.xlabel(r'$\delta$ (J2000)',fontsize=18)
-plt.ylabel(r'$\alpha$ (J2000)',fontsize=18)
-
-cb = fig.colorbar(red_fig, orientation='vertical',pad = 0.05)#, aspect=20, orientation='vertical',pad = 0.05)
-cb.set_label(r"%s'-band Extinction [mag]" % do_filt,fontsize=18)
-
-plt.savefig('%s-band_red_map.pdf' % do_filt)
-plt.show()
+# cm = plt.cm.get_cmap('jet')
+# 
+# fig = plt.figure()
+# red_fig = plt.scatter(ra_vals,dec_vals,marker='o',edgecolor="None",
+# 	c=red_vals,
+# 	vmin=np.min(red_vals),
+# 	vmax=np.max(red_vals),
+# 	cmap=cm,s=5)
+# 
+# plt.xlim(np.max(tbldata['ALPHA_J2000']),np.min(tbldata['ALPHA_J2000']))
+# plt.ylim(np.min(tbldata['DELTA_J2000']),np.max(tbldata['DELTA_J2000']))
+# plt.xlabel(r'$\delta$ (J2000)',fontsize=18)
+# plt.ylabel(r'$\alpha$ (J2000)',fontsize=18)
+# 
+# cb = fig.colorbar(red_fig, orientation='vertical',pad = 0.05)#, aspect=20, orientation='vertical',pad = 0.05)
+# cb.set_label(r"%s'-band Extinction [mag]" % do_filt,fontsize=18)
+# 
+# plt.savefig('%s-band_red_map.pdf' % do_filt)
+# plt.show()
