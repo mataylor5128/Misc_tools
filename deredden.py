@@ -36,41 +36,59 @@ import matplotlib.pyplot as plt
 from subprocess import call
 import os
 import time
+import sys
 
 start_time = time.time()
 
-do_filt = 'z'
+#prefix = '/Volumes/Q6/matt/stacks/'
+do_tile = sys.argv[1]
+do_filt = sys.argv[2]
 
-filein = 'survey_tile1_%s_psf.ldac' % do_filt
+if do_filt != 'i':
+#	filein = '%ssurvey_tile%s_%s_psf_ALIGNi.ldac' % (prefix,do_tile,do_filt)
+	filein = 'survey_tile%s_%s_psf_ALIGNi.ldac' % (do_tile,do_filt)
+else:
+#	filein = '%ssurvey_tile%s_%s_psf.ldac' % (prefix,do_tile,do_filt)
+	filein = 'survey_tile%s_%s_psf.ldac' % (do_tile,do_filt)
+
 hdulist = fits.open(filein)
 
 fileout = filein.replace('.ldac','_dered.fits')
-
-do_filt = 'g'
+#fileout = fileout.replace('stacks/','stacks/deredden/')
 
 tbldata = hdulist[2].data
-orig_cols = tbldata.columns
 
-red_col = fits.ColDefs([
-	fits.Column(name='REDDENING', format='E',
-		array=np.zeros(len(tbldata)))
-		])
+if not os.path.isfile(fileout):
+	orig_cols = tbldata.columns
 
-hduout = fits.BinTableHDU.from_columns(orig_cols + red_col)
-redtbldata = hduout.data
+	red_col = fits.ColDefs([
+		fits.Column(name='REDDENING', format='E',
+			array=np.zeros(len(tbldata)))
+			])
+
+	hduout = fits.BinTableHDU.from_columns(orig_cols + red_col)
+	redtbldata = hduout.data
+else:
+	hduout = fits.open(fileout)
+	redtbldata = hduout[1].data
 
 ra_vals = []
 dec_vals = []
 red_vals = []
-for ii in range(1000):
-	ind = np.random.random_integers(0,len(tbldata),1)
-	temp_ra = tbldata['ALPHA_J2000'][[ii]][0]#[ind][0]
-	temp_dec = tbldata['DELTA_J2000'][[ii]][0]#[ind][0]
-	ra_vals.append(temp_ra)
-	dec_vals.append(temp_dec)
-	temp_red = get_red(temp_ra,temp_dec,do_filt)
-	red_vals.append(temp_red)
-	redtbldata['REDDENING'][[ii]] = temp_red
+for ii in range(len(tbldata)):
+#	ind = np.random.random_integers(0,len(tbldata),1)
+	print ii
+	if redtbldata['REDDENING'][[ii]] == 0.:
+		temp_ra = tbldata['ALPHA_J2000'][[ii]][0]#[ind][0]
+		temp_dec = tbldata['DELTA_J2000'][[ii]][0]#[ind][0]
+		ra_vals.append(temp_ra)
+		dec_vals.append(temp_dec)
+		temp_red = get_red(temp_ra,temp_dec,do_filt)
+		red_vals.append(temp_red)
+		redtbldata['REDDENING'][[ii]] = temp_red
+		if (float(ii)/1000.).is_integer():
+			hduout.data = redtbldata
+			hduout.writeto(fileout,clobber=True)		
 
 hduout.data = redtbldata
 hduout.writeto(fileout,clobber=True)
